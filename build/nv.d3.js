@@ -1,4 +1,4 @@
-/* nvd3 version 1.6.0(https://github.com/liquidpele/nvd3) 2014-11-29 */
+/* nvd3 version 1.6.0(https://github.com/liquidpele/nvd3) 2014-12-01 */
 (function(){
 
 // set up main nv object on window
@@ -10323,9 +10323,13 @@ nv.models.multiChart = function() {
 
     chart.margin = function(_) {
         if (!arguments.length) return margin;
-        margin = _;
+        margin.top    = typeof _.top    != 'undefined' ? _.top    : margin.top;
+        margin.right  = typeof _.right  != 'undefined' ? _.right  : margin.right;
+        margin.bottom = typeof _.bottom != 'undefined' ? _.bottom : margin.bottom;
+        margin.left   = typeof _.left   != 'undefined' ? _.left   : margin.left;
         return chart;
     };
+
 
     chart.width = function(_) {
         if (!arguments.length) return width;
