@@ -387,6 +387,7 @@ nv.models.multiChart = function() {
     //------------------------------------------------------------
 
     chart.dispatch = dispatch;
+    chart.legend  = legend;
     chart.lines1 = lines1;
     chart.lines2 = lines2;
     chart.bars1 = bars1;
