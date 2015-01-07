@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <link href="../build/nv.d3.css" rel="stylesheet" type="text/css">
-    <script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.2/d3.min.js" charset="utf-8"></script>
     <script src="../build/nv.d3.js"></script>
 
     <style>
@@ -29,6 +29,17 @@
 
 <script>
 
+    // register our custom symbols to nvd3
+    // make sure your path is valid given any size because size scales if the chart scales.
+    nv.utils.symbolMap.set('thin-x', function(size) {
+        size = Math.sqrt(size);
+        return 'M' + (-size/2) + ',' + (-size/2) +
+                'l' + size + ',' + size +
+                'm0,' + -(size) +
+                'l' + (-size) + ',' + size;
+    });
+
+    // create the chart
     var chart;
     nv.addGraph(function() {
         chart = nv.models.scatterChart()
@@ -36,7 +47,7 @@
             .showDistY(true)
             .useVoronoi(true)
             .color(d3.scale.category10().range())
-            .transitionDuration(300)
+            .duration(300)
         ;
         chart.dispatch.on('renderEnd', function(){
             console.log('render complete');
@@ -55,16 +66,14 @@
         nv.utils.windowResize(chart.update);
 
         chart.dispatch.on('stateChange', function(e) { ('New State:', JSON.stringify(e)); });
-        chart.state.dispatch.on('change', function(state){
-            nv.log('state', JSON.stringify(state));
-        });
         return chart;
     });
 
 
     function randomData(groups, points) { //# groups,# points per group
+        // smiley and thin-x are our custom symbols!
         var data = [],
-            shapes = ['circle', 'cross', 'triangle-up', 'triangle-down', 'diamond', 'square'],
+            shapes = ['thin-x', 'circle', 'cross', 'triangle-up', 'triangle-down', 'diamond', 'square'],
             random = d3.random.normal();
 
         for (i = 0; i < groups; i++) {
@@ -77,8 +86,8 @@
                 data[i].values.push({
                     x: random(),
                     y: random(),
-                    size: Math.random(),
-                    shape: shapes[j % 6]
+                    size: Math.round(Math.random() * 100) / 100,
+                    shape: shapes[j % shapes.length]
                 });
             }
         }

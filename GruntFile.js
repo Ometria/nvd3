@@ -1,5 +1,5 @@
 
-var version = '1.6.0';
+var version = '1.7.0';
 
 module.exports = function(grunt) {
 
@@ -20,12 +20,9 @@ module.exports = function(grunt) {
                     'src/interactiveLayer.js',
                     'src/tooltip.js',
                     'src/utils.js',
-                    //Include all files in src/models, excluding some charts
-                    //that are no longer supported.
-                    'src/models/*.js',
-                    '!src/models/lineWithFisheye*',
-                    '!src/models/parallelCoordinates*',
-                    '!src/models/multiBarTime*'
+                    //Include all files in src/models
+                    'src/models/*.js'
+                    // example to exclude files: '!src/models/excludeMe*'
                      ],
                 dest: 'build/nv.d3.js'
             }

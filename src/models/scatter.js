@@ -7,8 +7,8 @@ nv.models.scatter = function() {
     //------------------------------------------------------------
 
     var margin       = {top: 0, right: 0, bottom: 0, left: 0}
-        , width        = 960
-        , height       = 500
+        , width        = null
+        , height       = null
         , color        = nv.utils.defaultColor() // chooses color
         , id           = Math.floor(Math.random() * 100000) //Create semi-unique ID incase user doesn't select one
         , x            = d3.scale.linear()
@@ -18,12 +18,10 @@ nv.models.scatter = function() {
         , getY         = function(d) { return d.y } // accessor to get the y value
         , getSize      = function(d) { return d.size || 1} // accessor to get the point size
         , getShape     = function(d) { return d.shape || 'circle' } // accessor to get point shape
-        , onlyCircles  = true // Set to false to use shapes
         , forceX       = [] // List of numbers to Force into the X scale (ie. 0, or a max / min, etc.)
         , forceY       = [] // List of numbers to Force into the Y scale
         , forceSize    = [] // List of numbers to Force into the Size scale
         , interactive  = true // If true, plots a voronoi overlay for advanced point intersection
-        , pointKey     = null
         , pointActive  = function(d) { return !d.notActive } // any points that return false will be filtered out
         , padData      = false // If true, adds half a data points width to front and back, for lining up a line chart with a bar chart
         , padDataOuter = .1 //outerPadding to imitate ordinal scale outer padding
@@ -56,9 +54,12 @@ nv.models.scatter = function() {
     function chart(selection) {
         renderWatch.reset();
         selection.each(function(data) {
-            var availableWidth = width - margin.left - margin.right,
-                availableHeight = height - margin.top - margin.bottom,
-                container = d3.select(this);
+            var container = d3.select(this);
+            var availableWidth = (width  || parseInt(container.style('width')) || 960)
+                - margin.left - margin.right;
+            var availableHeight = (height || parseInt(container.style('height')) || 400)
+                - margin.top - margin.bottom;
+
             nv.utils.initSVG(container);
 
             //add series index to each data point for reference
@@ -169,30 +170,7 @@ nv.models.scatter = function() {
                 //inject series and point index for reference into voronoi
                 if (useVoronoi === true) {
 
-                    if (clipVoronoi) {
-                        var pointClipsEnter = wrap.select('defs').selectAll('.nv-point-clips')
-                            .data([id])
-                            .enter();
-
-                        pointClipsEnter.append('clipPath')
-                            .attr('class', 'nv-point-clips')
-                            .attr('id', 'nv-points-clip-' + id);
-
-                        var pointClips = wrap.select('#nv-points-clip-' + id).selectAll('circle')
-                            .data(vertices);
-                        pointClips.enter().append('circle')
-                            .attr('r', clipRadius);
-                        pointClips.exit().remove();
-                        pointClips
-                            .attr('cx', function(d) { return d[0] })
-                            .attr('cy', function(d) { return d[1] });
-
-                        wrap.select('.nv-point-paths')
-                            .attr('clip-path', 'url(#nv-points-clip-' + id + ')');
-                    }
-
-
-                    if(vertices.length) {
+                    if(vertices.length < 3) {
                         // Issue #283 - Adding 2 dummy points to the voronoi b/c voronoi requires min 3 points to work
                         vertices.push([x.range()[0] - 20, y.range()[0] - 20, null, null]);
                         vertices.push([x.range()[1] + 20, y.range()[1] + 20, null, null]);
@@ -200,6 +178,8 @@ nv.models.scatter = function() {
                         vertices.push([x.range()[1] + 20, y.range()[1] - 20, null, null]);
                     }
 
+                    // keep voronoi sections from going more than 10 outside of graph
+                    // to avoid overlap with other things like legend etc
                     var bounds = d3.geom.polygon([
                         [-10,-10],
                         [-10,height + 10],
@@ -215,25 +195,45 @@ nv.models.scatter = function() {
                         }
                     });
 
-
-                    var pointPaths = wrap.select('.nv-point-paths').selectAll('path')
-                        .data(voronoi);
-                    pointPaths.enter().append('path')
-                        .attr('class', function(d,i) { return 'nv-path-'+i; });
-                    pointPaths.exit().remove();
+                    // nuke all voronoi paths on reload and recreate them
+                    wrap.select('.nv-point-paths').selectAll('path').remove();
+                    var pointPaths = wrap.select('.nv-point-paths').selectAll('path').data(voronoi);
                     pointPaths
-                        .attr('d', function(d) {
+                        .enter().append("svg:path")
+                        .attr("d", function(d) {
                             if (!d || !d.data || d.data.length === 0)
-                                return 'M 0 0'
+                                return 'M 0 0';
                             else
-                                return 'M' + d.data.join('L') + 'Z';
-                        });
+                                return "M" + d.data.join(",") + "Z";
+                        })
+                        .attr("id", function(d,i) {
+                            return "nv-path-"+i; })
+                        .attr("clip-path", function(d,i) { return "url(#nv-clip-"+i+")"; })
+                        ;
+                        // chain these to above to see the voronoi elements (good for debugging)
+                        //.style("fill", d3.rgb(230, 230, 230))
+                        //.style('fill-opacity', 0.4)
+                        //.style('stroke-opacity', 1)
+                        //.style("stroke", d3.rgb(200,200,200));
+
+                    if (clipVoronoi) {
+                        // voronoi sections are already set to clip,
+                        // just create the circles with the IDs they expect
+                        var clips = wrap.append("svg:g").attr("id", "nv-point-clips");
+                        clips.selectAll("clipPath")
+                            .data(vertices)
+                            .enter().append("svg:clipPath")
+                            .attr("id", function(d, i) { return "nv-clip-"+i;})
+                            .append("svg:circle")
+                            .attr('cx', function(d) { return d[0]; })
+                            .attr('cy', function(d) { return d[1]; })
+                            .attr('r', clipRadius);
+                    }
 
                     var mouseEventCallback = function(d,mDispatch) {
                         if (needsUpdate) return 0;
                         var series = data[d.series];
                         if (typeof series === 'undefined') return;
-
                         var point  = series.values[d.point];
 
                         mDispatch({
@@ -258,7 +258,6 @@ nv.models.scatter = function() {
                         .on('mouseout', function(d, i) {
                             mouseEventCallback(d, dispatch.elementMouseout);
                         });
-
 
                 } else {
                     /*
@@ -338,77 +337,45 @@ nv.models.scatter = function() {
                 .style('stroke-opacity', 1)
                 .style('fill-opacity', .5);
 
-
-            if (onlyCircles) {
-                var points = groups.selectAll('circle.nv-point')
-                    .data(function(d) { return d.values }, pointKey);
-                points.enter().append('circle')
-                    .style('fill', function (d,i) { return d.color })
-                    .style('stroke', function (d,i) { return d.color })
-                    .attr('cx', function(d,i) { return nv.utils.NaNtoZero(x0(getX(d,i))) })
-                    .attr('cy', function(d,i) { return nv.utils.NaNtoZero(y0(getY(d,i))) })
-                    .attr('r', function(d,i) { return Math.sqrt(z(getSize(d,i))/Math.PI) });
-                points.exit().remove();
-                groups.exit().selectAll('path.nv-point')
-                    .watchTransition(renderWatch, 'scatter exit')
-                    .attr('cx', function(d,i) { return nv.utils.NaNtoZero(x(getX(d,i))) })
-                    .attr('cy', function(d,i) { return nv.utils.NaNtoZero(y(getY(d,i))) })
-                    .remove();
-                points.each(function(d,i) {
-                    d3.select(this)
-                        .classed('nv-point', true)
-                        .classed('nv-point-' + i, true)
-                        .classed('hover',false)
-                    ;
-                });
-                points
-                    .watchTransition(renderWatch, 'scatter points')
-                    .attr('cx', function(d,i) { return nv.utils.NaNtoZero(x(getX(d,i))) })
-                    .attr('cy', function(d,i) { return nv.utils.NaNtoZero(y(getY(d,i))) })
-                    .attr('r', function(d,i) { return Math.sqrt(z(getSize(d,i))/Math.PI) });
-
-            } else {
-
-                var points = groups.selectAll('path.nv-point')
-                    .data(function(d) { return d.values });
-                points.enter().append('path')
-                    .style('fill', function (d,i) { return d.color })
-                    .style('stroke', function (d,i) { return d.color })
-                    .attr('transform', function(d,i) {
-                        return 'translate(' + x0(getX(d,i)) + ',' + y0(getY(d,i)) + ')'
-                    })
-                    .attr('d',
-                    d3.svg.symbol()
-                        .type(getShape)
-                        .size(function(d,i) { return z(getSize(d,i)) })
-                );
-                points.exit().remove();
-                groups.exit().selectAll('path.nv-point')
-                    .watchTransition(renderWatch, 'scatter exit')
-                    .attr('transform', function(d,i) {
-                        return 'translate(' + x(getX(d,i)) + ',' + y(getY(d,i)) + ')'
-                    })
-                    .remove();
-                points.each(function(d,i) {
-                    d3.select(this)
-                        .classed('nv-point', true)
-                        .classed('nv-point-' + i, true)
-                        .classed('hover',false)
-                    ;
-                });
-                points
-                    .watchTransition(renderWatch, 'scatter points')
-                    .attr('transform', function(d,i) {
-                        //nv.log(d,i,getX(d,i), x(getX(d,i)));
-                        return 'translate(' + x(getX(d,i)) + ',' + y(getY(d,i)) + ')'
-                    })
-                    .attr('d',
-                    d3.svg.symbol()
-                        .type(getShape)
-                        .size(function(d,i) { return z(getSize(d,i)) })
-                );
-            }
-
+            // create the points
+            var points = groups.selectAll('path.nv-point')
+                .data(function(d) { return d.values });
+            points.enter().append('path')
+                .style('fill', function (d,i) { return d.color })
+                .style('stroke', function (d,i) { return d.color })
+                .attr('transform', function(d,i) {
+                    return 'translate(' + x0(getX(d,i)) + ',' + y0(getY(d,i)) + ')'
+                })
+                .attr('d',
+                    nv.utils.symbol()
+                    .type(getShape)
+                    .size(function(d,i) { return z(getSize(d,i)) })
+            );
+            points.exit().remove();
+            groups.exit().selectAll('path.nv-point')
+                .watchTransition(renderWatch, 'scatter exit')
+                .attr('transform', function(d,i) {
+                    return 'translate(' + x(getX(d,i)) + ',' + y(getY(d,i)) + ')'
+                })
+                .remove();
+            points.each(function(d,i) {
+                d3.select(this)
+                    .classed('nv-point', true)
+                    .classed('nv-point-' + i, true)
+                    .classed('hover',false)
+                ;
+            });
+            points
+                .watchTransition(renderWatch, 'scatter points')
+                .attr('transform', function(d,i) {
+                    //nv.log(d,i,getX(d,i), x(getX(d,i)));
+                    return 'translate(' + x(getX(d,i)) + ',' + y(getY(d,i)) + ')'
+                })
+                .attr('d',
+                    nv.utils.symbol()
+                    .type(getShape)
+                    .size(function(d,i) { return z(getSize(d,i)) })
+            );
 
             // Delay updating the invisible interactive layer for smoother animation
             clearTimeout(timeoutID); // stop repeat calls to updateInteractiveLayer
@@ -459,41 +426,38 @@ nv.models.scatter = function() {
         height:       {get: function(){return height;}, set: function(_){height=_;}},
         xScale:       {get: function(){return x;}, set: function(_){x=_;}},
         yScale:       {get: function(){return y;}, set: function(_){y=_;}},
-        zScale:       {get: function(){return z;}, set: function(_){z=_;}},
+        pointScale:   {get: function(){return z;}, set: function(_){z=_;}},
         xDomain:      {get: function(){return xDomain;}, set: function(_){xDomain=_;}},
         yDomain:      {get: function(){return yDomain;}, set: function(_){yDomain=_;}},
-        sizeDomain:   {get: function(){return sizeDomain;}, set: function(_){sizeDomain=_;}},
+        pointDomain:  {get: function(){return sizeDomain;}, set: function(_){sizeDomain=_;}},
         xRange:       {get: function(){return xRange;}, set: function(_){xRange=_;}},
         yRange:       {get: function(){return yRange;}, set: function(_){yRange=_;}},
-        sizeRange:    {get: function(){return sizeRange;}, set: function(_){sizeRange=_;}},
+        pointRange:   {get: function(){return sizeRange;}, set: function(_){sizeRange=_;}},
         forceX:       {get: function(){return forceX;}, set: function(_){forceX=_;}},
         forceY:       {get: function(){return forceY;}, set: function(_){forceY=_;}},
-        forceSize:    {get: function(){return forceSize;}, set: function(_){forceSize=_;}},
+        forcePoint:   {get: function(){return forceSize;}, set: function(_){forceSize=_;}},
         interactive:  {get: function(){return interactive;}, set: function(_){interactive=_;}},
-        pointKey:     {get: function(){return pointKey;}, set: function(_){pointKey=_;}},
         pointActive:  {get: function(){return pointActive;}, set: function(_){pointActive=_;}},
         padDataOuter: {get: function(){return padDataOuter;}, set: function(_){padDataOuter=_;}},
         padData:      {get: function(){return padData;}, set: function(_){padData=_;}},
         clipEdge:     {get: function(){return clipEdge;}, set: function(_){clipEdge=_;}},
         clipVoronoi:  {get: function(){return clipVoronoi;}, set: function(_){clipVoronoi=_;}},
         clipRadius:   {get: function(){return clipRadius;}, set: function(_){clipRadius=_;}},
-        onlyCircles:  {get: function(){return onlyCircles;}, set: function(_){onlyCircles=_;}},
         id:           {get: function(){return id;}, set: function(_){id=_;}},
-        singlePoint:  {get: function(){return singlePoint;}, set: function(_){singlePoint=_;}},
 
 
         // simple functor options
         x:     {get: function(){return getX;}, set: function(_){getX = d3.functor(_);}},
         y:     {get: function(){return getY;}, set: function(_){getY = d3.functor(_);}},
-        size:  {get: function(){return getSize;}, set: function(_){getSize = d3.functor(_);}},
-        shape: {get: function(){return getShape;}, set: function(_){getShape = d3.functor(_);}},
+        pointSize: {get: function(){return getSize;}, set: function(_){getSize = d3.functor(_);}},
+        pointShape: {get: function(){return getShape;}, set: function(_){getShape = d3.functor(_);}},
 
         // options that require extra logic in the setter
         margin: {get: function(){return margin;}, set: function(_){
-            margin.top    = typeof _.top    != 'undefined' ? _.top    : margin.top;
-            margin.right  = typeof _.right  != 'undefined' ? _.right  : margin.right;
-            margin.bottom = typeof _.bottom != 'undefined' ? _.bottom : margin.bottom;
-            margin.left   = typeof _.left   != 'undefined' ? _.left   : margin.left;
+            margin.top    = _.top    !== undefined ? _.top    : margin.top;
+            margin.right  = _.right  !== undefined ? _.right  : margin.right;
+            margin.bottom = _.bottom !== undefined ? _.bottom : margin.bottom;
+            margin.left   = _.left   !== undefined ? _.left   : margin.left;
         }},
         duration: {get: function(){return duration;}, set: function(_){
             duration = _;

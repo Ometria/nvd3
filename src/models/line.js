@@ -25,8 +25,8 @@ nv.models.line = function() {
         ;
 
     scatter
-        .size(16) // default size
-        .sizeDomain([16,256]) //set to speed up calculation, needs to be unset if there is a custom size accessor
+        .pointSize(16) // default size
+        .pointDomain([16,256]) //set to speed up calculation, needs to be unset if there is a custom size accessor
     ;
 
     //============================================================
@@ -51,47 +51,32 @@ nv.models.line = function() {
                 availableHeight = height - margin.top - margin.bottom,
                 container = d3.select(this);
             nv.utils.initSVG(container);
-            //------------------------------------------------------------
-            // Setup Scales
 
+            // Setup Scales
             x = scatter.xScale();
             y = scatter.yScale();
 
             x0 = x0 || x;
             y0 = y0 || y;
 
-            //------------------------------------------------------------
-
-
-            //------------------------------------------------------------
             // Setup containers and skeleton of chart
-
             var wrap = container.selectAll('g.nv-wrap.nv-line').data([data]);
             var wrapEnter = wrap.enter().append('g').attr('class', 'nvd3 nv-wrap nv-line');
             var defsEnter = wrapEnter.append('defs');
             var gEnter = wrapEnter.append('g');
-            var g = wrap.select('g')
+            var g = wrap.select('g');
 
             gEnter.append('g').attr('class', 'nv-groups');
             gEnter.append('g').attr('class', 'nv-scatterWrap');
 
             wrap.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-            //------------------------------------------------------------
-
-
-
-
             scatter
                 .width(availableWidth)
-                .height(availableHeight)
+                .height(availableHeight);
 
             var scatterWrap = wrap.select('.nv-scatterWrap');
-            //.datum(data); // Data automatically trickles down from the wrap
-
             scatterWrap.call(scatter);
-
-
 
             defsEnter.append('clipPath')
                 .attr('id', 'nv-edge-clip-' + scatter.id())
@@ -104,8 +89,6 @@ nv.models.line = function() {
             g   .attr('clip-path', clipEdge ? 'url(#nv-edge-clip-' + scatter.id() + ')' : '');
             scatterWrap
                 .attr('clip-path', clipEdge ? 'url(#nv-edge-clip-' + scatter.id() + ')' : '');
-
-
 
             var groups = wrap.select('.nv-groups').selectAll('.nv-group')
                 .data(function(d) { return d }, function(d) { return d.key });
@@ -123,8 +106,6 @@ nv.models.line = function() {
             groups.watchTransition(renderWatch, 'line: groups')
                 .style('stroke-opacity', 1)
                 .style('fill-opacity', .5);
-
-
 
             var areaPaths = groups.selectAll('path.nv-area')
                 .data(function(d) { return isArea(d) ? [d] : [] }); // this is done differently than lines because I need to check if series is an area
@@ -155,14 +136,12 @@ nv.models.line = function() {
                         .apply(this, [d.values])
                 });
 
-
-
             var linePaths = groups.selectAll('path.nv-line')
                 .data(function(d) { return [d.values] });
             linePaths.enter().append('path')
                 .attr('class', 'nv-line')
                 .attr('d',
-                d3.svg.line()
+                    d3.svg.line()
                     .interpolate(interpolate)
                     .defined(defined)
                     .x(function(d,i) { return nv.utils.NaNtoZero(x0(getX(d,i))) })
@@ -171,19 +150,16 @@ nv.models.line = function() {
 
             linePaths.watchTransition(renderWatch, 'line: linePaths')
                 .attr('d',
-                d3.svg.line()
+                    d3.svg.line()
                     .interpolate(interpolate)
                     .defined(defined)
                     .x(function(d,i) { return nv.utils.NaNtoZero(x(getX(d,i))) })
                     .y(function(d,i) { return nv.utils.NaNtoZero(y(getY(d,i))) })
             );
 
-
-
             //store old scales for use in transitions on update
             x0 = x.copy();
             y0 = y.copy();
-
         });
         renderWatch.renderEnd('line immediate');
         return chart;
@@ -201,7 +177,6 @@ nv.models.line = function() {
     scatter.dispatch.on('elementMouseover', function(){ dispatch.elementMouseover.apply(this, arguments); })
     scatter.dispatch.on('elementMouseout', function(){ dispatch.elementMouseout.apply(this, arguments); })
 
-    chart.dispatch = dispatch;
     chart.options = nv.utils.optionsFunc.bind(chart);
 
     chart._options = Object.create({}, {
@@ -214,10 +189,10 @@ nv.models.line = function() {
 
         // options that require extra logic in the setter
         margin: {get: function(){return margin;}, set: function(_){
-            margin.top    = typeof _.top    != 'undefined' ? _.top    : margin.top;
-            margin.right  = typeof _.right  != 'undefined' ? _.right  : margin.right;
-            margin.bottom = typeof _.bottom != 'undefined' ? _.bottom : margin.bottom;
-            margin.left   = typeof _.left   != 'undefined' ? _.left   : margin.left;
+            margin.top    = _.top    !== undefined ? _.top    : margin.top;
+            margin.right  = _.right  !== undefined ? _.right  : margin.right;
+            margin.bottom = _.bottom !== undefined ? _.bottom : margin.bottom;
+            margin.left   = _.left   !== undefined ? _.left   : margin.left;
         }},
         duration: {get: function(){return duration;}, set: function(_){
             duration = _;
