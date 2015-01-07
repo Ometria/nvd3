@@ -7940,7 +7940,7 @@ nv.models.multiChart = function() {
                 }
 
                 g.select('.legendWrap')
-                    .attr('transform', 'translate(' + ( availableWidth / 2 ) + ',' + (-margin.top) +')');
+                    .attr('transform', 'translate(0,' + (-margin.top) +')');
             }
 
             lines1
