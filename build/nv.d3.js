@@ -6362,7 +6362,7 @@ nv.models.multiBar = function() {
                 });
 
             x.domain(xDomain || d3.merge(seriesData).map(function(d) { return d.x }))
-                .rangeBands(xRange || [0, availableWidth], groupSpacing);
+                .rangeBands(xRange || [0, availableWidth], groupSpacing, 0);
 
             y.domain(yDomain || d3.extent(d3.merge(seriesData).map(function(d) { return stacked ? (d.y > 0 ? d.y1 : d.y1 + d.y ) : d.y }).concat(forceY)))
                 .range(yRange || [availableHeight, 0]);
