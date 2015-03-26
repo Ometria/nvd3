@@ -1,5 +1,6 @@
 {
   "name": "nvd3",
+  "main": "./build/nv.d3.js",
   "version": "1.7.1",
   "scripts": {
     "postinstall": "bower install",
