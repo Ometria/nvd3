@@ -1,4 +1,4 @@
-/* nvd3 version 1.7.0(https://github.com/liquidpele/nvd3) 2015-01-07 */
+/* nvd3 version 1.7.1(https://github.com/novus/nvd3) 2015-02-08 */
 (function(){
 
 // set up main nv object on window
@@ -1614,7 +1614,9 @@ nv.utils.initSVG = function(svg) {
                     }
                     if (staggerLabels)
                         xTicks
-                            .attr('transform', function(d,i) { return 'translate(0,' + nv.utils.NaNtoZero((i % 2 == 0 ? '0' : '12')) + ')' });
+                            .attr('transform', function(d,i) {
+                                return 'translate(0,' + (i % 2 == 0 ? '0' : '12') + ')'
+                            });
 
                     break;
                 case 'right':
@@ -8795,7 +8797,15 @@ nv.models.pie = function() {
                     id: id
                 });
             });
-            ae.on('click', function(d,i) {
+
+            slices.attr('fill', function(d,i) { return color(d, i); })
+            slices.attr('stroke', function(d,i) { return color(d, i); });
+
+            var paths = ae.append('path').each(function(d) {
+                this._current = d;
+            });
+
+            paths.on('click', function(d,i) {
                 dispatch.elementClick({
                     label: getX(d.data),
                     value: getY(d.data),
@@ -8806,7 +8816,7 @@ nv.models.pie = function() {
                 });
                 d3.event.stopPropagation();
             });
-            ae.on('dblclick', function(d,i) {
+            paths.on('dblclick', function(d,i) {
                 dispatch.elementDblClick({
                     label: getX(d.data),
                     value: getY(d.data),
@@ -8817,14 +8827,6 @@ nv.models.pie = function() {
                 });
                 d3.event.stopPropagation();
             });
-
-            slices.attr('fill', function(d,i) { return color(d, i); })
-            slices.attr('stroke', function(d,i) { return color(d, i); });
-
-            var paths = ae.append('path').each(function(d) {
-                this._current = d;
-            });
-
             slices.select('path')
                 .transition()
                 .attr('d', arc)
@@ -11358,5 +11360,5 @@ nv.models.stackedAreaChart = function() {
     return chart;
 };
 
-nv.version = "1.7.0";
+nv.version = "1.7.1";
 })();
