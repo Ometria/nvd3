@@ -9281,7 +9281,7 @@ nv.models.scatter = function() {
         , sizeRange    = null
         , singlePoint  = false
         , dispatch     = d3.dispatch('elementClick', 'elementDblClick', 'elementMouseover', 'elementMouseout', 'renderEnd')
-        , useVoronoi   = true
+        , useVoronoi   = false
         , duration     = 250
         ;
 
