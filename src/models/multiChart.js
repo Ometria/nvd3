@@ -150,12 +150,11 @@ nv.models.multiChart = function() {
 
                 if ( margin.top != legend.height()) {
                     margin.top = legend.height();
-                    availableHeight = (height || parseInt(container.style('height')) || 400)
-                        - margin.top - margin.bottom;
+                    availableHeight = (height || parseInt(container.style('height')) || 400) - margin.top - margin.bottom;
                 }
 
                 g.select('.legendWrap')
-                    .attr('transform', 'translate(0,' + (-margin.top) +')');
+                    .attr('transform', 'translate(' + ( availableWidth / 2 ) + ',' + (-margin.top) +')');
             }
 
             lines1
